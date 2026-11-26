@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지구온난화 인터랙티브 시뮬레이션 (2026 - 2100)</title>
+    <!-- Tailwind CSS 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans KR & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans KR"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        space: '#070B14',
+                        panel: '#0F172A',
+                        card: '#1E293B',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #070B14;
+            color: #F8FAFC;
+            overflow-x: hidden;
+        }
+        /* 커스텀 슬라이더 스타일 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 8px;
+            border-radius: 999px;
+            background: #334155;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #38BDF8;
+            border: 3px solid #0F172A;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        #slider-emissions::-webkit-slider-thumb {
+            background: #F43F5E;
+            box-shadow: 0 0 10px rgba(244, 63, 94, 0.6);
+        }
+        #slider-renewables::-webkit-slider-thumb {
+            background: #38BDF8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+        }
+        #slider-forest::-webkit-slider-thumb {
+            background: #10B981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+        /* 펄스 애니메이션 */
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(244, 63, 94, 0.4); }
+            50% { border-color: rgba(244, 63, 94, 1); }
+        }
+        .critical-alert {
+            animation: pulse-border 2s infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+    <!-- 상단 헤더 바 -->
+    <header class="bg-panel/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-4 py-3 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <!-- 타이틀 및 배지 -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">지구온난화 시뮬레이션</h1>
+                        <span class="hidden sm:inline-block text-xs font-mono px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/30">CLIMATE LAB v2.6</span>
+                    </div>
+                    <p class="text-xs text-slate-400">탄소 배출 및 환경 정책에 따른 2100년 지구 기후 예측 모델</p>
+                </div>
+            </div>
+
+            <!-- 시간 컨트롤러 -->
+            <div class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+                <button id="btn-play-pause" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm transition shadow-md">
+                    <span id="play-icon">⏸</span>
+                    <span id="play-text">일시정지</span>
+                </button>
+                <div class="flex items-center bg-slate-800 rounded-lg p-0.5 text-xs font-mono">
+                    <button data-speed="1" class="speed-btn px-2.5 py-1.5 rounded-md bg-slate-700 text-white font-bold transition">1x</button>
+                    <button data-speed="2" class="speed-btn px-2.5 py-1.5 rounded-md text-slate-400 hover:text-white transition">2x</button>
+                    <button data-speed="5" class="speed-btn px-2.5 py-1.5 rounded-md text-slate-400 hover:text-white transition">5x</button>
+                </div>
+                <button id="btn-reset" title="2026년으로 초기화" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition border border-slate-700">
+                    ↺ 초기화
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 대시보드 콘텐츠 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 좌측/상단: 인터랙티브 지구 캔버스 & 실시간 핵심 지표 (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col gap-5">
+            
+            <!-- 상단 4대 핵심 지표 카드 -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <!-- 연도 -->
+                <div class="bg-panel border border-slate-800 rounded-2xl p-3.5 shadow-lg">
+                    <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+                        <span>시뮬레이션 연도</span>
+                        <span class="text-sky-400">📅</span>
+                    </div>
+                    <div id="metric-year" class="text-2xl sm:text-3xl font-mono font-bold text-white mt-1">2026</div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div id="year-progress" class="bg-sky-500 h-full transition-all duration-150" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- 지구 평균 기온 상승폭 -->
+                <div class="bg-panel border border-slate-800 rounded-2xl p-3.5 shadow-lg">
+                    <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+                        <span>평균 기온 상승</span>
+                        <span>🌡️</span>
+                    </div>
+                    <div id="metric-temp" class="text-2xl sm:text-3xl font-mono font-bold text-amber-400 mt-1">+1.25°C</div>
+                    <div id="temp-status" class="text-[11px] text-slate-400 mt-1">산업화 이전 대비</div>
+                </div>
+
+                <!-- 대기 중 CO2 농도 -->
+                <div class="bg-panel border border-slate-800 rounded-2xl p-3.5 shadow-lg">
+                    <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+                        <span>CO₂ 농도</span>
+                        <span>☁️</span>
+                    </div>
+                    <div class="flex items-baseline gap-1 mt-1">
+                        <span id="metric-co2" class="text-2xl sm:text-3xl font-mono font-bold text-rose-400">426</span>
+                        <span class="text-xs font-mono text-slate-400">ppm</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-1">적정 기준: 350 ppm</div>
+                </div>
+
+                <!-- 해수면 상승 & 빙하 -->
+                <div class="bg-panel border border-slate-800 rounded-2xl p-3.5 shadow-lg">
+                    <div class="text-xs text-slate-400 font-medium flex items-center justify-between">
+                        <span>빙하 / 해수면</span>
+                        <span>🧊</span>
+                    </div>
+                    <div class="flex items-baseline justify-between mt-1">
+                        <span id="metric-ice" class="text-xl sm:text-2xl font-mono font-bold text-cyan-300">92%</span>
+                        <span id="metric-sea" class="text-sm font-mono font-semibold text-blue-400">+10cm</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-1">잔여 극지방 빙하 면적</div>
+                </div>
+            </div>
+
+            <!-- 지구 3D/2D 인터랙티브 시각화 캔버스 컨테이너 -->
+            <div class="relative bg-panel border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                <!-- 캔버스 상단 상태 오버레이 -->
+                <div class="absolute top-4 left-4 right-4 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+                    <div class="bg-slate-950/80 backdrop-blur-md border border-slate-800/80 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                        <span id="earth-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span id="earth-status-badge" class="text-xs font-semibold text-slate-200">지구 상태: 온난화 진행 중</span>
+                    </div>
+                    <div class="bg-slate-950/80 backdrop-blur-md border border-slate-800/80 px-3 py-1.5 rounded-xl text-xs text-slate-300 flex items-center gap-3">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-white inline-block"></span> 극지방 빙하</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> 삼림</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-600 inline-block"></span> 사막화</span>
+                    </div>
+                </div>
+
+                <!-- 지구 애니메이션 캔버스 -->
+                <div id="earth-canvas-wrapper" class="w-full h-[360px] sm:h-[430px] relative cursor-grab active:cursor-grabbing">
+                    <canvas id="earthCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <!-- 하단 기상 이변 & 티핑포인트 실시간 경고 배너 -->
+                <div id="alert-box" class="bg-slate-900/95 border-t border-slate-800 px-4 py-3.5 flex items-start gap-3 transition-colors duration-300">
+                    <div id="alert-icon" class="text-xl mt-0.5">⚠️</div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <h3 id="alert-title" class="text-sm font-bold text-amber-400">기후 변화 주의 단계 (+1.25°C)</h3>
+                            <span id="tipping-tag" class="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">파리협약 목표: +1.5°C 이내</span>
+                        </div>
+                        <p id="alert-desc" class="text-xs text-slate-300 mt-1 leading-relaxed">
+                            북극 해빙이 매년 줄어들고 있으며, 전 세계적으로 폭염과 국지성 집중호우의 빈도가 증가하고 있습니다. 탄소 배출 감축 정책이 필요합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 우측/하단: 정책 시뮬레이션 제어판 & 실시간 추이 그래프 (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-5">
+            
+            <!-- 정책 및 환경 변수 제어 패널 -->
+            <div class="bg-panel border border-slate-800 rounded-3xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>🎛️</span> 환경 정책 변수 조절
+                    </h2>
+                    <span class="text-xs text-slate-400">실시간 반영</span>
+                </div>
+
+                <!-- 시나리오 프리셋 버튼 -->
+                <div class="mb-5">
+                    <label class="block text-xs font-medium text-slate-400 mb-2">빠른 시나리오 선택 (프리셋)</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="applyPreset('bau')" id="preset-bau" class="preset-btn px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-sky-500/50 transition text-center">
+                            📊 현재 추세<br><span class="text-[10px] text-slate-400 font-normal">(BAU 시나리오)</span>
+                        </button>
+                        <button onclick="applyPreset('netzero')" id="preset-netzero" class="preset-btn px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 transition text-center">
+                            🌱 탄소 중립<br><span class="text-[10px] text-slate-400 font-normal">(1.5°C 방어)</span>
+                        </button>
+                        <button onclick="applyPreset('worst')" id="preset-worst" class="preset-btn px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 transition text-center">
+                            🔥 화석연료 급증<br><span class="text-[10px] text-slate-400 font-normal">(최악의 시나리오)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3가지 핵심 슬라이더 -->
+                <div class="space-y-5">
+                    <!-- 1. 화석연료 탄소 배출량 -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800/80">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="slider-emissions" class="text-sm font-semibold text-rose-300 flex items-center gap-1.5">
+                                <span>🏭</span> 화석연료 탄소 배출량
+                            </label>
+                            <span id="val-emissions" class="font-mono text-sm font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md">40 Gt/년</span>
+                        </div>
+                        <input id="slider-emissions" type="range" min="0" max="100" value="42" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+                            <span>0 Gt (배출 제로)</span>
+                            <span>현재(42 Gt)</span>
+                            <span>100 Gt (폭증)</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. 재생에너지 전환 비율 -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800/80">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="slider-renewables" class="text-sm font-semibold text-sky-300 flex items-center gap-1.5">
+                                <span>☀️</span> 재생에너지 전환율
+                            </label>
+                            <span id="val-renewables" class="font-mono text-sm font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md">30%</span>
+                        </div>
+                        <input id="slider-renewables" type="range" min="10" max="100" value="30" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+                            <span>10% (화석 의존)</span>
+                            <span>50%</span>
+                            <span>100% (청정 에너지)</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. 산림 면적 및 나무 심기 -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800/80">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="slider-forest" class="text-sm font-semibold text-emerald-300 flex items-center gap-1.5">
+                                <span>🌲</span> 산림 보호 및 조림 면적
+                            </label>
+                            <span id="val-forest" class="font-mono text-sm font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">50%</span>
+                        </div>
+                        <input id="slider-forest" type="range" min="10" max="100" value="50" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-500 mt-1">
+                            <span>10% (무분별 벌목)</span>
+                            <span>50% (유지)</span>
+                            <span>100% (대규모 조림)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 연간 순 탄소 증감 요약 바 -->
+                <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                    <span class="text-slate-400">연간 순 CO₂ 농도 변화율:</span>
+                    <span id="net-co2-rate" class="font-mono font-bold text-rose-400">+2.4 ppm / 년</span>
+                </div>
+            </div>
+
+            <!-- 실시간 시계열 그래프 패널 (2026 ~ 2100) -->
+            <div class="bg-panel border border-slate-800 rounded-3xl p-5 shadow-xl flex-1 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <span>📈</span> 기후 변화 추이 그래프
+                        </h2>
+                        <p class="text-[11px] text-slate-400">2026년 ~ 2100년 기온 상승폭 및 CO₂ 농도</p>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1.5 text-amber-400 font-medium">
+                            <span class="w-3 h-1 bg-amber-400 rounded-full"></span>기온(°C)
+                        </span>
+                        <span class="flex items-center gap-1.5 text-sky-400 font-medium">
+                            <span class="w-3 h-1 bg-sky-400 rounded-full"></span>CO₂(ppm)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 그래프 캔버스 컨테이너 -->
+                <div class="relative flex-1 min-h-[190px] w-full bg-slate-950/60 rounded-2xl border border-slate-800/80 p-2">
+                    <canvas id="chartCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 교육용 하단 푸터 노트 -->
+    <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 pb-6 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500">
+        <p>※ 본 시뮬레이션은 IPCC 기후 변화 시나리오(SSP)의 핵심 원리를 교육 목적으로 단순화한 과학 모델입니다.</p>
+        <p>마우스로 지구를 드래그하여 회전시킬 수 있습니다.</p>
+    </footer>
+
+    <!-- 시뮬레이션 및 시각화 엔진 스크립트 -->
+    <script>
+        /**
+         * 지구온난화 시뮬레이션 핵심 상태 및 물리 모델
+         */
+        const START_YEAR = 2026;
+        const END_YEAR = 2100;
+
+        // 시뮬레이션 상태 객체
+        const state = {
+            year: 2026.0,
+            tempAnomaly: 1.25,     // 산업화 이전 대비 상승 기온 (°C)
+            co2: 426.0,            // 대기 중 CO2 농도 (ppm)
+            iceCoverage: 92.0,     // 극지방 빙하 잔존율 (%)
+            seaLevel: 10.0,        // 해수면 상승폭 (cm)
+            
+            // 사용자 제어 입력값
+            emissions: 42,         // 화석연료 배출량 (0 ~ 100 Gt)
+            renewables: 30,        // 재생에너지 비율 (10 ~ 100 %)
+            forest: 50,            // 산림 면적 지수 (10 ~ 100 %)
+
+            // 재생 제어
+            isPlaying: true,
+            speed: 1,              // 1x, 2x, 5x
+            
+            // 지구 시각화 회전 및 파티클
+            rotationAngle: 0,
+            isDragging: false,
+            lastMouseX: 0,
+            
+            // 그래프용 히스토리 데이터
+            history: []
+        };
+
+        // DOM 요소 참조
+        const elYear = document.getElementById('metric-year');
+        const elYearProgress = document.getElementById('year-progress');
+        const elTemp = document.getElementById('metric-temp');
+        const elTempStatus = document.getElementById('temp-status');
+        const elCo2 = document.getElementById('metric-co2');
+        const elIce = document.getElementById('metric-ice');
+        const elSea = document.getElementById('metric-sea');
+        const elNetCo2Rate = document.getElementById('net-co2-rate');
+
+        const sliderEmissions = document.getElementById('slider-emissions');
+        const sliderRenewables = document.getElementById('slider-renewables');
+        const sliderForest = document.getElementById('slider-forest');
+        const valEmissions = document.getElementById('val-emissions');
+        const valRenewables = document.getElementById('val-renewables');
+        const valForest = document.getElementById('val-forest');
+
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+        const btnReset = document.getElementById('btn-reset');
+        const speedBtns = document.querySelectorAll('.speed-btn');
+
+        const alertBox = document.getElementById('alert-box');
+        const alertIcon = document.getElementById('alert-icon');
+        const alertTitle = document.getElementById('alert-title');
+        const alertDesc = document.getElementById('alert-desc');
+        const tippingTag = document.getElementById('tipping-tag');
+        const earthStatusDot = document.getElementById('earth-status-dot');
+        const earthStatusBadge = document.getElementById('earth-status-badge');
+
+        // 캔버스 설정
+        const earthCanvas = document.getElementById('earthCanvas');
+        const earthCtx = earthCanvas.getContext('2d');
+        const chartCanvas = document.getElementById('chartCanvas');
+        const chartCtx = chartCanvas.getContext('2d');
+
+        // 배경 별 및 대기 입자 배열
+        const stars = Array.from({ length: 90 }, () => ({
+            x: Math.random(),
+            y: Math.random(),
+            size: Math.random() * 1.8 + 0.4,
+            alpha: Math.random() * 0.7 + 0.3
+        }));
+
+        const co2Particles = Array.from({ length: 65 }, () => ({
+            angle: Math.random() * Math.PI * 2,
+            radiusOffset: Math.random() * 28 + 6,
+            speed: (Math.random() * 0.4 + 0.2) * (Math.random() < 0.5 ? 1 : -1),
+            size: Math.random() * 2.5 + 1.5
+        }));
+
+        // 대륙 폴리곤 데이터 (정규화된 경도/위도 좌표)
+        const continents = [
+            // 유라시아 & 아프리카 형태 단순화
+            [
+                { lon: -0.2, lat: 0.55 }, { lon: 0.2, lat: 0.65 }, { lon: 0.8, lat: 0.6 },
+                { lon: 1.1, lat: 0.35 }, { lon: 0.95, lat: 0.1 }, { lon: 0.5, lat: 0.05 },
+                { lon: 0.45, lat: -0.35 }, { lon: 0.2, lat: -0.5 }, { lon: 0.05, lat: -0.2 },
+                { lon: -0.25, lat: 0.1 }, { lon: -0.3, lat: 0.35 }
+            ],
+            // 아메리카 대륙 형태 단순화
+            [
+                { lon: -2.2, lat: 0.6 }, { lon: -1.5, lat: 0.55 }, { lon: -1.4, lat: 0.25 },
+                { lon: -1.65, lat: 0.05 }, { lon: -1.3, lat: -0.15 }, { lon: -1.45, lat: -0.55 },
+                { lon: -1.75, lat: -0.45 }, { lon: -1.85, lat: -0.05 }, { lon: -2.1, lat: 0.25 }
+            ],
+            // 오세아니아 형태 단순화
+            [
+                { lon: 1.4, lat: -0.25 }, { lon: 1.85, lat: -0.28 }, { lon: 1.9, lat: -0.52 },
+                { lon: 1.45, lat: -0.5 }
+            ]
+        ];
+
+        /**
+         * 초기화 및 히스토리 리셋
+         */
+        function resetSimulation() {
+            state.year = START_YEAR;
+            state.tempAnomaly = 1.25;
+            state.co2 = 426.0;
+            state.iceCoverage = 92.0;
+            state.seaLevel = 10.0;
+            state.history = [{
+                year: START_YEAR,
+                temp: state.tempAnomaly,
+                co2: state.co2
+            }];
+            state.isPlaying = true;
+            updatePlayButtonUI();
+            updateUI();
+        }
+
+        /**
+         * 시나리오 프리셋 적용
+         */
+        window.applyPreset = function(type) {
+            // 프리셋 버튼 테두리 강조 초기화
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('border-sky-500/80', 'border-emerald-500/80', 'border-rose-500/80');
+                btn.classList.add('border-slate-700');
+            });
+
+            if (type === 'bau') {
+                state.emissions = 45;
+                state.renewables = 35;
+                state.forest = 45;
+                document.getElementById('preset-bau').classList.replace('border-slate-700', 'border-sky-500/80');
+            } else if (type === 'netzero') {
+                state.emissions = 8;
+                state.renewables = 88;
+                state.forest = 85;
+                document.getElementById('preset-netzero').classList.replace('border-slate-700', 'border-emerald-500/80');
+            } else if (type === 'worst') {
+                state.emissions = 88;
+                state.renewables = 15;
+                state.forest = 20;
+                document.getElementById('preset-worst').classList.replace('border-slate-700', 'border-rose-500/80');
+            }
+
+            sliderEmissions.value = state.emissions;
+            sliderRenewables.value = state.renewables;
+            sliderForest.value = state.forest;
+            updateSliderLabels();
+        };
+
+        /**
+         * 슬라이더 라벨 및 순 배출량 계산 업데이트
+         */
+        function updateSliderLabels() {
+            valEmissions.textContent = `${state.emissions} Gt/년`;
+            valRenewables.textContent = `${state.renewables}%`;
+            valForest.textContent = `${state.forest}%`;
+
+            const netRate = calculateAnnualCo2Change();
+            const sign = netRate >= 0 ? '+' : '';
+            elNetCo2Rate.textContent = `${sign}${netRate.toFixed(2)} ppm / 년`;
+            elNetCo2Rate.className = netRate > 0.5 
+                ? 'font-mono font-bold text-rose-400' 
+                : (netRate < -0.1 ? 'font-mono font-bold text-emerald-400' : 'font-mono font-bold text-amber-300');
+        }
+
+        /**
+         * 연간 순 CO2 농도 변화량 계산 (ppm/년)
+         */
+        function calculateAnnualCo2Change() {
+            // 재생에너지 비율이 높을수록 실제 화석연료 배출 효율 감소
+            const effectiveEmissions = state.emissions * (1 - (state.renewables - 10) / 130);
+            // 산림과 해양의 자연 흡수량
+            const naturalSink = 1.1 + (state.forest / 100) * 1.65;
+            // 1 Gt 탄소 배출은 대기 농도 약 0.128 ppm 상승에 기여 (보정 계수 적용)
+            const ppmAdded = effectiveEmissions * 0.115;
+            return ppmAdded - naturalSink;
+        }
+
+        /**
+         * 매 프레임 기후 물리 모델 스텝 업데이트
+         */
+        function stepSimulation(dt) {
+            if (!state.isPlaying || state.year >= END_YEAR) {
+                if (state.year >= END_YEAR && state.isPlaying) {
+                    state.year = END_YEAR;
+                    state.isPlaying = false;
+                    updatePlayButtonUI();
+                }
+                return;
+            }
+
+            // 1초당 기본 1.6년 진행 (속도 배수 적용)
+            const yearDelta = dt * 1.6 * state.speed;
+            const prevIntYear = Math.floor(state.year);
+            state.year = Math.min(END_YEAR, state.year + yearDelta);
+            const currIntYear = Math.floor(state.year);
+
+            // 1. 대기 중 CO2 농도 업데이트 (최소 350ppm ~ 최대 1100ppm)
+            const annualCo2Delta = calculateAnnualCo2Change();
+            state.co2 = Math.max(350, Math.min(1100, state.co2 + annualCo2Delta * yearDelta));
+
+            // 2. 복사 강제력 기반 평형 기온 계산 (로그 비례)
+            // CO2 280ppm(산업화 이전) 기준 기후 민감도 반영
+            const targetTemp = 3.1 * Math.log2(state.co2 / 280) - 0.58;
+            // 해양 열관성으로 인해 기온은 목표 기온을 서서히 추종
+            state.tempAnomaly += (targetTemp - state.tempAnomaly) * yearDelta * 0.18;
+            state.tempAnomaly = Math.max(0.8, state.tempAnomaly);
+
+            // 3. 극지방 빙하 면적 (%) - 1.5°C 초과 시 가속 해빙
+            const meltRate = (state.tempAnomaly - 0.95) * 0.95;
+            state.iceCoverage = Math.max(2, Math.min(100, state.iceCoverage - meltRate * yearDelta));
+
+            // 4. 해수면 상승 (cm) - 열팽창 + 빙하 해빙
+            const seaRiseRate = Math.max(0.1, (state.tempAnomaly - 0.8) * 0.85);
+            state.seaLevel += seaRiseRate * yearDelta;
+
+            // 연도가 바뀔 때마다 그래프 히스토리 기록
+            if (currIntYear > prevIntYear) {
+                state.history.push({
+                    year: currIntYear,
+                    temp: state.tempAnomaly,
+                    co2: state.co2
+                });
+            }
+        }
+
+        /**
+         * 대시보드 UI 및 경고 배너 업데이트
+         */
+        function updateUI() {
+            const displayYear = Math.floor(state.year);
+            elYear.textContent = displayYear;
+            const progress = ((state.year - START_YEAR) / (END_YEAR - START_YEAR)) * 100;
+            elYearProgress.style.width = `${progress}%`;
+
+            elTemp.textContent = `+${state.tempAnomaly.toFixed(2)}°C`;
+            elCo2.textContent = Math.round(state.co2);
+            elIce.textContent = `${Math.round(state.iceCoverage)}%`;
+            elSea.textContent = `+${Math.round(state.seaLevel)}cm`;
+
+            // 기온 단계별 색상 및 티핑포인트 경고 업데이트
+            alertBox.classList.remove('critical-alert', 'bg-rose-950/40', 'bg-amber-950/30', 'bg-emerald-950/30');
+            
+            if (state.tempAnomaly < 1.5) {
+                elTemp.className = 'text-2xl sm:text-3xl font-mono font-bold text-emerald-400 mt-1';
+                elTempStatus.textContent = '파리협약 안전 범위 내';
+                earthStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+                earthStatusBadge.textContent = '지구 상태: 비교적 안정';
+                
+                alertBox.classList.add('bg-emerald-950/30');
+                alertIcon.textContent = '🌿';
+                alertTitle.textContent = `안정 관리 단계 (+${state.tempAnomaly.toFixed(2)}°C)`;
+                alertTitle.className = 'text-sm font-bold text-emerald-400';
+                tippingTag.textContent = '파리협약 1.5°C 목표 준수 중';
+                tippingTag.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20';
+                alertDesc.textContent = '온실가스 감축과 재생에너지 전환이 효과를 발휘하고 있습니다. 극지방 빙하 손실 속도가 둔화되며 생태계가 회복력을 유지하고 있습니다.';
+            } else if (state.tempAnomaly < 2.0) {
+                elTemp.className = 'text-2xl sm:text-3xl font-mono font-bold text-amber-400 mt-1';
+                elTempStatus.textContent = '1.5°C 한계선 돌파';
+                earthStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+                earthStatusBadge.textContent = '지구 상태: 온난화 경고';
+
+                alertBox.classList.add('bg-amber-950/30');
+                alertIcon.textContent = '⚠️';
+                alertTitle.textContent = `1차 티핑포인트: +1.5°C 파리협약 한계 돌파 (+${state.tempAnomaly.toFixed(2)}°C)`;
+                alertTitle.className = 'text-sm font-bold text-amber-400';
+                tippingTag.textContent = '산호초 70~90% 소실 위기';
+                tippingTag.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20';
+                alertDesc.textContent = '열대 산호초의 대규모 백화 현상이 발생하고, 북극 여름철 해빙이 급격히 줄어듭니다. 폭염과 가뭄, 대형 산불의 빈도가 뚜렷하게 증가합니다.';
+            } else if (state.tempAnomaly < 3.0) {
+                elTemp.className = 'text-2xl sm:text-3xl font-mono font-bold text-orange-500 mt-1';
+                elTempStatus.textContent = '심각한 기후 위기';
+                earthStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-orange-500 animate-ping';
+                earthStatusBadge.textContent = '지구 상태: 기후 위기 심각';
+
+                alertBox.classList.add('bg-rose-950/40', 'critical-alert');
+                alertIcon.textContent = '🔥';
+                alertTitle.textContent = `2차 티핑포인트: +2.0°C 임계점 초과 (+${state.tempAnomaly.toFixed(2)}°C)`;
+                alertTitle.className = 'text-sm font-bold text-orange-400';
+                tippingTag.textContent = '그린란드 빙상 붕괴 시작';
+                tippingTag.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-300 border border-orange-500/30';
+                alertDesc.textContent = '그린란드 및 서남극 빙상의 돌이킬 수 없는 해빙이 가속화되며 해안 저지대 도시들이 침수 위험에 직면합니다. 전 세계 식량 생산량이 급감합니다.';
+            } else {
+                elTemp.className = 'text-2xl sm:text-3xl font-mono font-bold text-rose-500 mt-1';
+                elTempStatus.textContent = '재앙적 기후 붕괴';
+                earthStatusDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping';
+                earthStatusBadge.textContent = '지구 상태: 재앙적 임계점 초과';
+
+                alertBox.classList.add('bg-rose-950/40', 'critical-alert');
+                alertIcon.textContent = '🚨';
+                alertTitle.textContent = `최악의 임계점: +3.0°C 이상 폭주 (+${state.tempAnomaly.toFixed(2)}°C)`;
+                alertTitle.className = 'text-sm font-bold text-rose-400';
+                tippingTag.textContent = '영구동토층 메탄 방출 폭주';
+                tippingTag.className = 'text-[11px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40';
+                alertDesc.textContent = '시베리아 영구동토층이 녹아 막대한 메탄가스가 방출되고 아마존 열대우림이 사바나로 변합니다. 인류 거주 불가능 지역이 광범위하게 확대됩니다.';
+            }
+        }
+
+        /**
+         * 지구 인터랙티브 캔버스 렌더링
+         */
+        function renderEarth() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = earthCanvas.parentElement.getBoundingClientRect();
+            if (earthCanvas.width !== rect.width * dpr || earthCanvas.height !== rect.height * dpr) {
+                earthCanvas.width = rect.width * dpr;
+                earthCanvas.height = rect.height * dpr;
+            }
+            earthCtx.save();
+            earthCtx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = rect.height;
+            const cx = w / 2;
+            const cy = h / 2 + 8;
+            const radius = Math.min(w, h) * 0.34;
+
+            // 1. 우주 배경 그라데이션
+            const bgGrad = earthCtx.createRadialGradient(cx, cy, radius * 0.5, cx, cy, Math.max(w, h) * 0.7);
+            bgGrad.addColorStop(0, '#0F172A');
+            bgGrad.addColorStop(1, '#04070D');
+            earthCtx.fillStyle = bgGrad;
+            earthCtx.fillRect(0, 0, w, h);
+
+            // 반짝이는 별 그리기
+            stars.forEach(s => {
+                earthCtx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+                earthCtx.beginPath();
+                earthCtx.arc(s.x * w, s.y * h, s.size, 0, Math.PI * 2);
+                earthCtx.fill();
+            });
+
+            // 온난화 심각도 지수 (0.0 ~ 1.0)
+            const heatRatio = Math.max(0, Math.min(1, (state.tempAnomaly - 1.1) / 3.0));
+
+            // 2. 대기권 글로우 (기온이 높을수록 푸른빛에서 붉은 열기 빛으로 변화)
+            const atmoGrad = earthCtx.createRadialGradient(cx, cy, radius * 0.92, cx, cy, radius * 1.28);
+            const rAtmo = Math.round(56 + heatRatio * 188);
+            const gAtmo = Math.round(189 - heatRatio * 125);
+            const bAtmo = Math.round(248 - heatRatio * 180);
+            atmoGrad.addColorStop(0, `rgba(${rAtmo}, ${gAtmo}, ${bAtmo}, 0.45)`);
+            atmoGrad.addColorStop(0.6, `rgba(${rAtmo}, ${gAtmo}, ${bAtmo}, 0.12)`);
+            atmoGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            earthCtx.fillStyle = atmoGrad;
+            earthCtx.beginPath();
+            earthCtx.arc(cx, cy, radius * 1.28, 0, Math.PI * 2);
+            earthCtx.fill();
+
+            // 3. 대기 중 CO2 / 열기 입자 회전 애니메이션
+            const visibleParticles = Math.floor((state.co2 - 350) / 10);
+            co2Particles.forEach((p, idx) => {
+                if (idx > visibleParticles) return;
+                p.angle += p.speed * 0.015;
+                const px = cx + Math.cos(p.angle) * (radius + p.radiusOffset);
+                const py = cy + Math.sin(p.angle) * (radius + p.radiusOffset) * 0.88;
+                earthCtx.fillStyle = heatRatio > 0.45 
+                    ? `rgba(251, 113, 133, ${0.35 + heatRatio * 0.4})` 
+                    : 'rgba(148, 163, 184, 0.35)';
+                earthCtx.beginPath();
+                earthCtx.arc(px, py, p.size, 0, Math.PI * 2);
+                earthCtx.fill();
+            });
+
+            // 4. 지구 구체 클리핑 영역 시작
+            earthCtx.save();
+            earthCtx.beginPath();
+            earthCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+            earthCtx.clip();
+
+            // 바다 색상 (해수면 상승 및 수온 상승에 따라 색조 미세 변화)
+            const oceanGrad = earthCtx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, radius * 0.1, cx, cy, radius);
+            oceanGrad.addColorStop(0, heatRatio > 0.6 ? '#0284C7' : '#0EA5E9');
+            oceanGrad.addColorStop(0.7, '#0369A1');
+            oceanGrad.addColorStop(1, '#0C4A6E');
+            earthCtx.fillStyle = oceanGrad;
+            earthCtx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+            // 대륙 그리기 (기온 상승 + 산림 면적에 따른 사막화 표현)
+            const forestFactor = state.forest / 100;
+            const desertFactor = Math.min(1, heatRatio * 0.8 + (1 - forestFactor) * 0.5);
+            const landR = Math.round(16 + desertFactor * 185);
+            const landG = Math.round(185 - desertFactor * 55);
+            const landB = Math.round(129 - desertFactor * 85);
+
+            // 해수면 상승에 따른 대륙 축소 효과
+            const landScale = Math.max(0.84, 1 - (state.seaLevel - 10) / 700);
+
+            earthCtx.fillStyle = `rgb(${landR}, ${landG}, ${landB})`;
+            continents.forEach(poly => {
+                earthCtx.beginPath();
+                let visiblePoints = 0;
+                poly.forEach((pt, i) => {
+                    const lon = pt.lon + state.rotationAngle;
+                    // 구면 투영 계산
+                    const x3d = Math.sin(lon) * Math.cos(pt.lat);
+                    const y3d = -Math.sin(pt.lat);
+                    const z3d = Math.cos(lon) * Math.cos(pt.lat);
+
+                    if (z3d > -0.25) visiblePoints++;
+                    const projX = cx + x3d * radius * landScale;
+                    const projY = cy + y3d * radius * landScale;
+
+                    if (i === 0) earthCtx.moveTo(projX, projY);
+                    else earthCtx.lineTo(projX, projY);
+                });
+                earthCtx.closePath();
+                if (visiblePoints > 1) {
+                    earthCtx.fill();
+                    // 해안선 하이라이트 (해수면 상승 시각화)
+                    earthCtx.strokeStyle = 'rgba(186, 230, 253, 0.35)';
+                    earthCtx.lineWidth = 1.5;
+                    earthCtx.stroke();
+                }
+            });
+
+            // 고온 시 산불/폭염 핫스팟 표시
+            if (state.tempAnomaly > 1.8) {
+                const intensity = Math.min(1, (state.tempAnomaly - 1.8) / 2.0);
+                const pulse = (Math.sin(Date.now() * 0.006) + 1) * 0.5;
+                earthCtx.fillStyle = `rgba(244, 63, 94, ${0.35 * intensity + pulse * 0.25})`;
+                earthCtx.beginPath();
+                earthCtx.arc(cx + Math.sin(state.rotationAngle) * radius * 0.35, cy - radius * 0.1, radius * 0.16 * intensity, 0, Math.PI * 2);
+                earthCtx.fill();
+            }
+
+            // 5. 북극 및 남극 빙하 캡 (iceCoverage에 비례하여 크기 변화)
+            const iceRatio = state.iceCoverage / 100;
+            const capHeight = radius * 0.34 * Math.sqrt(iceRatio);
+
+            earthCtx.fillStyle = '#F8FAFC';
+            if (capHeight > 2) {
+                // 북극 빙하
+                earthCtx.beginPath();
+                earthCtx.ellipse(cx, cy - radius + capHeight * 0.45, radius * 0.78 * Math.sqrt(iceRatio), capHeight, 0, 0, Math.PI * 2);
+                earthCtx.fill();
+
+                // 남극 빙하
+                earthCtx.beginPath();
+                earthCtx.ellipse(cx, cy + radius - capHeight * 0.45, radius * 0.82 * Math.sqrt(iceRatio), capHeight * 1.05, 0, 0, Math.PI * 2);
+                earthCtx.fill();
+            }
+
+            // 6. 구름층 (기온이 높을수록 태풍/구름 소용돌이 증가)
+            earthCtx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+            for (let i = 0; i < 5; i++) {
+                const cLon = state.rotationAngle * 1.3 + i * 1.25;
+                const cLat = (i % 2 === 0 ? 0.28 : -0.25);
+                const cx3d = Math.sin(cLon) * Math.cos(cLat);
+                const cz3d = Math.cos(cLon) * Math.cos(cLat);
+                if (cz3d > 0) {
+                    earthCtx.beginPath();
+                    earthCtx.ellipse(
+                        cx + cx3d * radius * 0.85,
+                        cy - Math.sin(cLat) * radius * 0.85,
+                        radius * (0.22 + heatRatio * 0.12),
+                        radius * 0.06,
+                        0, 0, Math.PI * 2
+                    );
+                    earthCtx.fill();
+                }
+            }
+
+            // 7. 입체감을 위한 밤/낮 그림자 셰이딩
+            const shadowGrad = earthCtx.createRadialGradient(
+                cx - radius * 0.35, cy - radius * 0.35, radius * 0.2,
+                cx, cy, radius * 1.05
+            );
+            shadowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+            shadowGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.15)');
+            shadowGrad.addColorStop(1, 'rgba(2, 6, 23, 0.82)');
+            earthCtx.fillStyle = shadowGrad;
+            earthCtx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+            earthCtx.restore(); // 클리핑 해제
+            earthCtx.restore();
+        }
+
+        /**
+         * 실시간 시계열 그래프 캔버스 렌더링 (2026 ~ 2100)
+         */
+        function renderChart() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = chartCanvas.parentElement.getBoundingClientRect();
+            if (chartCanvas.width !== rect.width * dpr || chartCanvas.height !== rect.height * dpr) {
+                chartCanvas.width = rect.width * dpr;
+                chartCanvas.height = rect.height * dpr;
+            }
+            chartCtx.save();
+            chartCtx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = rect.height;
+            const padLeft = 36;
+            const padRight = 38;
+            const padTop = 16;
+            const padBottom = 24;
+            const plotW = w - padLeft - padRight;
+            const plotH = h - padTop - padBottom;
+
+            chartCtx.clearRect(0, 0, w, h);
+
+            // 배경 그리드 및 Y축 눈금 (좌측: 기온 1.0°C ~ 4.5°C)
+            const minTemp = 1.0, maxTemp = 4.5;
+            const minCo2 = 350, maxCo2 = 950;
+
+            chartCtx.font = '10px "JetBrains Mono", monospace';
+            chartCtx.textBaseline = 'middle';
+
+            for (let i = 0; i <= 3; i++) {
+                const ratio = i / 3;
+                const y = padTop + plotH - ratio * plotH;
+                const tempVal = minTemp + ratio * (maxTemp - minTemp);
+                const co2Val = Math.round(minCo2 + ratio * (maxCo2 - minCo2));
+
+                // 가로 보조선
+                chartCtx.strokeStyle = 'rgba(51, 65, 85, 0.5)';
+                chartCtx.lineWidth = 1;
+                chartCtx.beginPath();
+                chartCtx.moveTo(padLeft, y);
+                chartCtx.lineTo(padLeft + plotW, y);
+                chartCtx.stroke();
+
+                // 좌측 기온 라벨
+                chartCtx.fillStyle = '#FBBF24';
+                chartCtx.textAlign = 'right';
+                chartCtx.fillText(`+${tempVal.toFixed(1)}°`, padLeft - 5, y);
+
+                // 우측 CO2 라벨
+                chartCtx.fillStyle = '#38BDF8';
+                chartCtx.textAlign = 'left';
+                chartCtx.fillText(`${co2Val}`, padLeft + plotW + 5, y);
+            }
+
+            // 1.5°C 파리협약 한계선 표시
+            const y15 = padTop + plotH - ((1.5 - minTemp) / (maxTemp - minTemp)) * plotH;
+            chartCtx.save();
+            chartCtx.setLineDash([4, 4]);
+            chartCtx.strokeStyle = 'rgba(244, 63, 94, 0.6)';
+            chartCtx.beginPath();
+            chartCtx.moveTo(padLeft, y15);
+            chartCtx.lineTo(padLeft + plotW, y15);
+            chartCtx.stroke();
+            chartCtx.fillStyle = 'rgba(244, 63, 94, 0.85)';
+            chartCtx.textAlign = 'left';
+            chartCtx.fillText('1.5°C 한계선', padLeft + 4, y15 - 7);
+            chartCtx.restore();
+
+            // X축 연도 라벨 (2026, 2050, 2075, 2100)
+            const xYears = [2026, 2050, 2075, 2100];
+            chartCtx.fillStyle = '#94A3B8';
+            chartCtx.textAlign = 'center';
+            chartCtx.textBaseline = 'top';
+            xYears.forEach(yr => {
+                const x = padLeft + ((yr - START_YEAR) / (END_YEAR - START_YEAR)) * plotW;
+                chartCtx.fillText(yr, x, padTop + plotH + 6);
+            });
+
+            if (state.history.length > 0) {
+                // CO2 농도 곡선 (하늘색)
+                chartCtx.strokeStyle = '#38BDF8';
+                chartCtx.lineWidth = 2;
+                chartCtx.beginPath();
+                state.history.forEach((pt, idx) => {
+                    const x = padLeft + ((pt.year - START_YEAR) / (END_YEAR - START_YEAR)) * plotW;
+                    const normCo2 = Math.max(0, Math.min(1, (pt.co2 - minCo2) / (maxCo2 - minCo2)));
+                    const y = padTop + plotH - normCo2 * plotH;
+                    if (idx === 0) chartCtx.moveTo(x, y);
+                    else chartCtx.lineTo(x, y);
+                });
+                chartCtx.stroke();
+
+                // 기온 상승 곡선 (앰버/레드)
+                chartCtx.strokeStyle = '#FBBF24';
+                chartCtx.lineWidth = 2.5;
+                chartCtx.beginPath();
+                state.history.forEach((pt, idx) => {
+                    const x = padLeft + ((pt.year - START_YEAR) / (END_YEAR - START_YEAR)) * plotW;
+                    const normTemp = Math.max(0, Math.min(1, (pt.temp - minTemp) / (maxTemp - minTemp)));
+                    const y = padTop + plotH - normTemp * plotH;
+                    if (idx === 0) chartCtx.moveTo(x, y);
+                    else chartCtx.lineTo(x, y);
+                });
+                chartCtx.stroke();
+
+                // 현재 시점 포인트 강조
+                const last = state.history[state.history.length - 1];
+                const lastX = padLeft + ((last.year - START_YEAR) / (END_YEAR - START_YEAR)) * plotW;
+                const lastTempY = padTop + plotH - Math.max(0, Math.min(1, (last.temp - minTemp) / (maxTemp - minTemp))) * plotH;
+                chartCtx.fillStyle = '#FBBF24';
+                chartCtx.beginPath();
+                chartCtx.arc(lastX, lastTempY, 4, 0, Math.PI * 2);
+                chartCtx.fill();
+            }
+
+            chartCtx.restore();
+        }
+
+        /**
+         * 재생/일시정지 버튼 UI 갱신
+         */
+        function updatePlayButtonUI() {
+            if (state.isPlaying) {
+                playIcon.textContent = '⏸';
+                playText.textContent = '일시정지';
+                btnPlayPause.className = 'flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm transition shadow-md';
+            } else {
+                playIcon.textContent = '▶';
+                playText.textContent = state.year >= END_YEAR ? '완료됨' : '재생하기';
+                btnPlayPause.className = 'flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition shadow-md';
+            }
+        }
+
+        /**
+         * 이벤트 리스너 등록
+         */
+        sliderEmissions.addEventListener('input', (e) => {
+            state.emissions = Number(e.target.value);
+            updateSliderLabels();
+        });
+
+        sliderRenewables.addEventListener('input', (e) => {
+            state.renewables = Number(e.target.value);
+            updateSliderLabels();
+        });
+
+        sliderForest.addEventListener('input', (e) => {
+            state.forest = Number(e.target.value);
+            updateSliderLabels();
+        });
+
+        btnPlayPause.addEventListener('click', () => {
+            if (state.year >= END_YEAR) {
+                resetSimulation();
+                return;
+            }
+            state.isPlaying = !state.isPlaying;
+            updatePlayButtonUI();
+        });
+
+        btnReset.addEventListener('click', () => {
+            resetSimulation();
+        });
+
+        speedBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.speed = Number(btn.dataset.speed);
+                speedBtns.forEach(b => {
+                    b.classList.remove('bg-slate-700', 'text-white', 'font-bold');
+                    b.classList.add('text-slate-400');
+                });
+                btn.classList.add('bg-slate-700', 'text-white', 'font-bold');
+                btn.classList.remove('text-slate-400');
+            });
+        });
+
+        // 지구 마우스/터치 드래그 회전 인터랙션
+        earthCanvas.addEventListener('mousedown', (e) => {
+            state.isDragging = true;
+            state.lastMouseX = e.clientX;
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!state.isDragging) return;
+            const dx = e.clientX - state.lastMouseX;
+            state.rotationAngle += dx * 0.008;
+            state.lastMouseX = e.clientX;
+        });
+        window.addEventListener('mouseup', () => {
+            state.isDragging = false;
+        });
+
+        earthCanvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                state.isDragging = true;
+                state.lastMouseX = e.touches[0].clientX;
+            }
+        }, { passive: true });
+        earthCanvas.addEventListener('touchmove', (e) => {
+            if (!state.isDragging || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - state.lastMouseX;
+            state.rotationAngle += dx * 0.008;
+            state.lastMouseX = e.touches[0].clientX;
+        }, { passive: true });
+        earthCanvas.addEventListener('touchend', () => {
+            state.isDragging = false;
+        });
+
+        /**
+         * 메인 애니메이션 루프
+         */
+        let lastTimestamp = 0;
+        function mainLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = Math.min(0.1, (timestamp - lastTimestamp) / 1000);
+            lastTimestamp = timestamp;
+
+            // 지구 자전 애니메이션 (드래그 중이 아닐 때)
+            if (!state.isDragging) {
+                state.rotationAngle += dt * 0.28;
+            }
+
+            stepSimulation(dt);
+            updateUI();
+            renderEarth();
+            renderChart();
+
+            requestAnimationFrame(mainLoop);
+        }
+
+        // 윈도우 로드 시 초기화 및 루프 시작
+        window.onload = function() {
+            updateSliderLabels();
+            resetSimulation();
+            requestAnimationFrame(mainLoop);
+        };
+    </script>
+</body>
+</html>
